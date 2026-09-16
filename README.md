@@ -1,6 +1,6 @@
 # Tu Mesa Bot: Asistente Web para Atención en Mesa
 
-## Descripción del Proyecto<
+## Descripción del Proyecto
 
 * **Contexto:** Pequeños y medianos restaurantes con alta demanda que presentan cuellos de botella en el servicio a la mesa.
 * **Problema:** La sobrecarga del personal de servicio genera retrasos observables en la atención y una experiencia negativa.
