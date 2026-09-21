@@ -1,7 +1,6 @@
 # Tu Mesa Bot: Asistente Web para Atención en Mesa
 
 ## Descripción del Proyecto
-
 * **Contexto:** Pequeños y medianos restaurantes con alta demanda que presentan cuellos de botella en el servicio a la mesa.
 * **Problema:** La sobrecarga del personal de servicio genera retrasos observables en la atención y una experiencia negativa.
 * **Justificación:** Agilizar el servicio beneficia a los dueños aumentando la rotación de mesas y reduce la sobrecarga del personal. También mejora la experiencia de servicio del cliente.
@@ -20,45 +19,42 @@
 
 ---
 
-## Mapa de Ciclo de Vida del Desarrollo
+## Requisitos Preliminares y Backlog Inicial
 
-### 1. Contextualización
-* **Pregunta:** ¿Qué problema existe y quién lo vive?
-* **Evidencias:** Diagnóstico de la demora y congestión en la atención de mesas durante horas pico. Listado de stakeholders: Propietarios, meseros, comensales y el equipo de desarrollo.
+### Requisitos Funcionales (RF)
+* **RF01:** El sistema debe permitir al usuario acceder al chat con el bot que le proporcionará el menú al escanear el código QR.
+* **RF02:** El sistema debe permitir al usuario seleccionar productos, especificar cantidades y añadir notas personalizadas (ej. "sin cebolla").
+* **RF03:** El sistema debe calcular y mostrar automáticamente el costo total del pedido antes de que el usuario lo confirme.
+* **RF04:** El sistema debe proporcionar un tiempo estimado de preparación del pedido basándose en los productos seleccionados.
+* **RF05:** El sistema debe notificar y visualizar en tiempo real la orden confirmada en la interfaz del equipo de cocina, incluyendo el número de mesa correspondiente.
 
-### 2. Requisitos
-* **Pregunta:** ¿Qué debe hacer y bajo qué condiciones?
-* **Requisitos Funcionales (RF):** El bot debe dar información del menú, tomar pedido, calcular costo y calcular el tiempo estimado del pedido.
-* **Requisitos No Funcionales (RNF):** El sistema debe funcionar fluidamente en navegadores móviles estándar (HTML5) sin instalar aplicaciones nativas.
-* **Evidencias:** Documentación de RF, RNF e historias de usuario.
+### Requisitos No Funcionales (RNF)
+* **RNF01:** La aplicación debe funcionar de manera responsiva y fluida en navegadores móviles estándar (HTML5) sin requerir instalación nativa[cite: 15].
+* **RNF02:** El backend (desarrollado en Python y Django) debe procesar el envío del pedido a la cocina con una latencia no mayor a 2 segundos en condiciones normales de red[cite: 15].
+* **RNF03:** El sistema debe asignar automáticamente el número de mesa a la sesión del usuario con base en el código QR único escaneado, sin pedirle al usuario que lo ingrese manualmente[cite: 15].
 
-### 3. Diseño
-* **Pregunta:** ¿Cómo se organizará la solución?
-* **Evidencias:** Diseño de la interfaz web del bot y la arquitectura para integrar las notificaciones con la cocina.
+### Historias de Usuario
+* **HU01:** Como comensal, quiero escanear un código QR para acceder al menú interactivo, para decidir qué ordenar de forma autónoma y rápida[cite: 15].
+* **HU02:** Como comensal, quiero armar mi pedido y ver el tiempo/costo estimado, para confirmar mi orden con seguridad y saber cuánto esperaré[cite: 15].
+* **HU03:** Como personal de cocina, quiero recibir las comandas digitales automáticamente, para comenzar a preparar los platos sin necesidad de que el mesero venga físicamente[cite: 15].
 
-### 4. Construcción
-* **Pregunta:** ¿Cómo se implementa?
-* **Evidencias:** Código fuente de la aplicación web en HTML5, junto con el registro de ramas y commits del desarrollo.
+**Flujo de Interacción:**
+```mermaid
+sequenceDiagram
+    autonumber
+    actor C as Comensal
+    participant S as Tu Mesa Bot (Sistema)
+    actor P as Personal de Cocina
 
-### 5. Pruebas
-* **Pregunta:** ¿Cumple lo esperado?
-* **Evidencias:** Casos de prueba para medir tiempos de respuesta y evaluar la latencia del servidor. Resultados y reporte de defectos.
+    Note over C, S: HU01: Acceso al menú interactivo
+    C->>S: Escanea código QR de la mesa
+    S-->>C: Despliega menú digital (categorías y precios)
 
-### 6. Entrega
-* **Pregunta:** ¿Qué versión se libera?
-* **Evidencias:** Aplicación web accesible mediante código QR. Manuales de usuario y notas de la versión.
+    Note over C, S: HU02: Armado y confirmación del pedido
+    C->>S: Selecciona platos, cantidades y añade notas
+    S-->>C: Calcula y muestra costo total y tiempo estimado
+    C->>S: Confirma el pedido
 
----
-
-## Enfoques de Trabajo
-* **Predictivo:** Planificación más detallada al inicio.
-* **Iterativo:** La solución se refina mediante ciclos.
-* **Incremental:** Se entregan capacidades progresivamente.
-* **Ágil (Recomendado):** Prioriza valor, retroalimentación frecuente y adaptación. Ideal para mitigar la resistencia al uso por clientes tradicionales y la falta de adopción del personal.
-
-## Roles
-* **Stakeholder/cliente:** Propietarios de los restaurantes.
-* **Usuario:** Comensales del restaurante y personal de servicio (meseros y equipo de cocina).
-* **Equipo de desarrollo:** Encargados de la construcción de la aplicación.
-* **Responsable del producto / Líder:** Coordina el proyecto y define el valor a entregar.
-* **Responsable de pruebas/calidad:** Encargado de verificar los tiempos de respuesta y probar la latencia del servidor.
+    Note over S, P: HU03: Recepción de comandas en cocina
+    S->>P: Envía orden digital (N° de mesa, ítems, notas)
+    Note right of P: Visualiza la orden en pantalla<br/>y comienza la preparación
