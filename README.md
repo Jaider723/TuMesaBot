@@ -37,6 +37,8 @@
 * **HU01:** Como comensal, quiero escanear un código QR para acceder al menú interactivo, para decidir qué ordenar de forma autónoma y rápida.
 * **HU02:** Como comensal, quiero armar mi pedido y ver el tiempo/costo estimado, para confirmar mi orden con seguridad y saber cuánto esperaré.
 * **HU03:** Como personal de cocina, quiero recibir las comandas digitales automáticamente, para comenzar a preparar los platos sin necesidad de que el mesero venga físicamente.
+* **HU04:** Como comensal, quiero solicitar la asistencia de un mesero mediante un botón en la aplicación, para resolver dudas específicas o solicitar algo que no está en el menú.
+* **HU05:** Como personal de cocina, quiero marcar un pedido como "listo" en el sistema, para notificar automáticamente a los meseros que pueden recoger los platos y llevarlos a la mesa.
 
 **Flujo de Interacción:**
 ```mermaid
@@ -44,6 +46,7 @@ sequenceDiagram
     autonumber
     actor C as Comensal
     participant S as Tu Mesa Bot (Sistema)
+    actor M as Mesero
     actor P as Personal de Cocina
 
     Note over C, S: HU01: Acceso al menú interactivo
@@ -58,3 +61,13 @@ sequenceDiagram
     Note over S, P: HU03: Recepción de comandas en cocina
     S->>P: Envía orden digital (N° de mesa, ítems, notas)
     Note right of P: Visualiza la orden en pantalla<br/>y comienza la preparación
+
+    Note over C, M: HU04: Solicitud de asistencia humana
+    C->>S: Presiona botón "Llamar Mesero"
+    S->>M: Envía alerta de asistencia (N° de mesa)
+    M-->>C: Se acerca a la mesa para atender la solicitud física
+
+    Note over P, M: HU05: Notificación de pedido listo
+    P->>S: Marca la orden como "Preparada"
+    S->>M: Notifica al mesero que el pedido de la mesa está listo
+    M-->>C: Recoge en cocina y entrega el pedido en la mesa
