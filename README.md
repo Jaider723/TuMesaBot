@@ -32,6 +32,8 @@
 * **RNF01:** La aplicación debe funcionar de manera responsiva y fluida en navegadores móviles estándar (HTML5) sin requerir instalación nativa.
 * **RNF02:** El backend debe procesar el envío del pedido a la cocina con una latencia no mayor a 2 segundos en condiciones normales de red.
 * **RNF03:** El sistema debe asignar automáticamente el número de mesa a la sesión del usuario con base en el código QR único escaneado, sin pedirle al usuario que lo ingrese manualmente.
+* **RNF04:** El sistema debe soportar un mínimo de 50 usuarios concurrentes interactuando simultáneamente durante las horas pico sin degradar el tiempo de respuesta establecido de 2 segundos.
+* **RNF05:** El sistema debe garantizar el aislamiento de la sesión web, asegurando que un usuario no pueda acceder, visualizar ni modificar las comandas correspondientes al código QR de otra mesa activa mediante la manipulación de la URL.
 
 ### Historias de Usuario
 * **HU01:** Como comensal, quiero escanear un código QR para acceder al menú interactivo, para decidir qué ordenar de forma autónoma y rápida.
