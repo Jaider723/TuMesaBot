@@ -29,14 +29,14 @@
 * **RF05:** El sistema debe notificar y visualizar en tiempo real la orden confirmada en la interfaz del equipo de cocina, incluyendo el número de mesa correspondiente.
 
 ### Requisitos No Funcionales (RNF)
-* **RNF01:** La aplicación debe funcionar de manera responsiva y fluida en navegadores móviles estándar (HTML5) sin requerir instalación nativa[cite: 15].
-* **RNF02:** El backend (desarrollado en Python y Django) debe procesar el envío del pedido a la cocina con una latencia no mayor a 2 segundos en condiciones normales de red[cite: 15].
-* **RNF03:** El sistema debe asignar automáticamente el número de mesa a la sesión del usuario con base en el código QR único escaneado, sin pedirle al usuario que lo ingrese manualmente[cite: 15].
+* **RNF01:** La aplicación debe funcionar de manera responsiva y fluida en navegadores móviles estándar (HTML5) sin requerir instalación nativa.
+* **RNF02:** El backend debe procesar el envío del pedido a la cocina con una latencia no mayor a 2 segundos en condiciones normales de red.
+* **RNF03:** El sistema debe asignar automáticamente el número de mesa a la sesión del usuario con base en el código QR único escaneado, sin pedirle al usuario que lo ingrese manualmente.
 
 ### Historias de Usuario
-* **HU01:** Como comensal, quiero escanear un código QR para acceder al menú interactivo, para decidir qué ordenar de forma autónoma y rápida[cite: 15].
-* **HU02:** Como comensal, quiero armar mi pedido y ver el tiempo/costo estimado, para confirmar mi orden con seguridad y saber cuánto esperaré[cite: 15].
-* **HU03:** Como personal de cocina, quiero recibir las comandas digitales automáticamente, para comenzar a preparar los platos sin necesidad de que el mesero venga físicamente[cite: 15].
+* **HU01:** Como comensal, quiero escanear un código QR para acceder al menú interactivo, para decidir qué ordenar de forma autónoma y rápida.
+* **HU02:** Como comensal, quiero armar mi pedido y ver el tiempo/costo estimado, para confirmar mi orden con seguridad y saber cuánto esperaré.
+* **HU03:** Como personal de cocina, quiero recibir las comandas digitales automáticamente, para comenzar a preparar los platos sin necesidad de que el mesero venga físicamente.
 
 **Flujo de Interacción:**
 ```mermaid
