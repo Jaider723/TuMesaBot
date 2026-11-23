@@ -1,0 +1,38 @@
+{
+  "name": "tumesabot",
+  "version": "1.0.0",
+  "description": "* **Contexto:** Pequeños y medianos restaurantes con alta demanda que presentan cuellos de botella en el servicio a la mesa.\r * **Problema:** La sobrecarga del personal de servicio genera retrasos observables en la atención y una experiencia negativa.\r * **Justificación:** Agilizar el servicio beneficia a los dueños aumentando la rotación de mesas y reduce la sobrecarga del personal. También mejora la experiencia de servicio del cliente.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "db:init": "node src/db/initDb.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jaider723/tumesabot.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/jaider723/tumesabot/issues"
+  },
+  "homepage": "https://github.com/jaider723/tumesabot#readme",
+  "dependencies": {
+    "cookie-parser": "^1.4.7",
+    "dotenv": "^18.0.10",
+    "express": "^5.3.0",
+    "helmet": "^8.3.0",
+    "pg": "^8.23.1",
+    "qrcode": "^1.5.4",
+    "socket.io": "^4.8.4",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "artillery": "^2.0.34",
+    "nodemon": "^3.1.14"
+  }
+}
