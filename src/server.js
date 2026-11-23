@@ -35,12 +35,21 @@ app.use(express.urlencoded({ extended: true }));
 // Parsing de cookies firmadas con COOKIE_SECRET
 app.use(cookieParser(env.COOKIE_SECRET));
 
-// Servir archivos estáticos del frontend desde la carpeta public/
-app.use(express.static(path.join(__dirname, '../public')));
+// Servir exclusivamente scripts y hojas de estilo estáticas; los archivos HTML se entregan por rutas
+app.use('/js', express.static(path.join(__dirname, '../public/js')));
+app.use('/css', express.static(path.join(__dirname, '../public/css')));
 
 // ==========================================
-// RUTAS DE LA API
+// RUTAS DE LA APLICACIÓN
 // ==========================================
+
+// Vistas HTML
+const viewsRoutes = require('./routes/viewsRoutes');
+app.use('/', viewsRoutes);
+
+// API de Administración
+const adminApiRoutes = require('./routes/adminApiRoutes');
+app.use('/api/admin', adminApiRoutes);
 
 // Endpoint de verificación de salud del sistema y base de datos
 app.get('/api/health', async (req, res) => {
@@ -70,10 +79,16 @@ app.use('/api', (req, res) => {
 
 // Middleware global de manejo de excepciones y errores internos
 app.use((err, req, res, next) => {
-  console.error('❌ Error no controlado en la aplicación:', err);
-  res.status(err.status || 500).json({
+  const status = err.status || 500;
+  const message = status < 500 ? err.message : 'Error interno del servidor';
+
+  if (status >= 500) {
+    console.error('❌ Error no controlado en la aplicación:', err);
+  }
+
+  res.status(status).json({
     status: 'error',
-    error: 'Error interno del servidor'
+    error: message
   });
 });
 
