@@ -9,6 +9,7 @@
 const MAX_CANTIDAD_POR_LINEA = 50;
 const MAX_LINEAS_CARRITO = 50;
 const MAX_MENSAJE_LEN = 400;
+const COOLDOWN_MESERO_MS = 15000;
 
 const state = {
   mesa: null,
@@ -16,6 +17,9 @@ const state = {
   mapaProductos: new Map(),
   carritoActual: [],
   isSending: false,
+  isRequestingMesero: false,
+  meseroCooldownUntil: 0,
+  meseroTimerId: null,
   activeSummaryCard: null,
   activeDisambiguationGroups: []
 };
@@ -123,7 +127,8 @@ function setSendingState(isSending) {
   elements.quickMenuBtn.disabled = isSending;
   elements.quickResumenBtn.disabled = isSending;
   elements.quickVaciarBtn.disabled = isSending;
-  elements.btnSolicitarMesero.disabled = isSending;
+  elements.btnSolicitarMesero.disabled =
+    isSending || state.isRequestingMesero || obtenerSegundosRestantesMesero() > 0;
 
   if (isSending) {
     elements.typingIndicator.classList.remove('hidden');
@@ -132,6 +137,47 @@ function setSendingState(isSending) {
   }
 
   scrollToBottom();
+}
+
+/**
+ * Calcula los segundos restantes del enfriamiento de 15s para solicitar mesero.
+ */
+function obtenerSegundosRestantesMesero() {
+  return Math.max(0, Math.ceil((state.meseroCooldownUntil - Date.now()) / 1000));
+}
+
+/**
+ * Actualiza visualmente el botón de "Solicitar Mesero" según el enfriamiento activo.
+ */
+function actualizarBotonMesero() {
+  const btn = elements.btnSolicitarMesero;
+  if (!btn) return;
+  const labelSpan = btn.querySelector('span:last-child');
+  const restantes = obtenerSegundosRestantesMesero();
+
+  if (restantes > 0) {
+    btn.disabled = true;
+    if (labelSpan) labelSpan.textContent = `Espera ${restantes}s...`;
+  } else {
+    if (state.meseroTimerId) {
+      clearInterval(state.meseroTimerId);
+      state.meseroTimerId = null;
+    }
+    btn.disabled = state.isSending || state.isRequestingMesero;
+    if (labelSpan) labelSpan.textContent = 'Solicitar Mesero';
+  }
+}
+
+/**
+ * Activa el enfriamiento de 15 segundos tras enviar una solicitud de asistencia.
+ */
+function iniciarCooldownMesero() {
+  state.meseroCooldownUntil = Date.now() + COOLDOWN_MESERO_MS;
+  if (state.meseroTimerId) {
+    clearInterval(state.meseroTimerId);
+  }
+  actualizarBotonMesero();
+  state.meseroTimerId = setInterval(actualizarBotonMesero, 1000);
 }
 
 /**
@@ -1132,11 +1178,9 @@ async function enviarMensajeAlBot(textoMensaje) {
     }
 
     if (res.accion === 'solicitar_mesero') {
-      const botonesMesero = Array.isArray(res.botonesRapidos) && res.botonesRapidos.length > 0
-        ? res.botonesRapidos
-        : ['Solicitar mesero', 'Ver menú'];
-      const quickNode = crearNodosBotonesRapidos(botonesMesero);
-      agregarBurbujaBotTexto(res.respuestaBot, { extraNode: quickNode });
+      // Ajuste 1: disparar directamente solicitarMesero() sin renderizar texto previo
+      setSendingState(false);
+      await solicitarMesero();
       return;
     }
 
@@ -1263,18 +1307,43 @@ function mostrarResumenDesdeAccesoRapido() {
 }
 
 /**
- * Solicita asistencia de un mesero para la mesa actual.
- * Preparada para conectarse al endpoint POST /api/cliente/solicitar-mesero en la Fase 4.
+ * Solicita asistencia de un mesero en tiempo real mediante POST /api/cliente/solicitar-mesero
+ * aplicando un enfriamiento de 15 segundos entre solicitudes para evitar spam.
  */
 async function solicitarMesero() {
-  if (state.isSending) return;
+  if (state.isSending || state.isRequestingMesero) return;
 
-  const numeroMesa = state.mesa ? state.mesa.numero : '';
-  const textoMesa = numeroMesa ? `Mesa #${numeroMesa}` : 'tu mesa';
+  const restantes = obtenerSegundosRestantesMesero();
+  if (restantes > 0) {
+    agregarBurbujaBotTexto(
+      `⏳ Ya enviamos una solicitud recientemente. Por favor espera ${restantes} segundo${restantes === 1 ? '' : 's'} antes de volver a solicitar un mesero.`
+    );
+    return;
+  }
 
-  agregarBurbujaBotTexto(
-    `🙋‍♂️ Se registró tu solicitud de asistencia para ${textoMesa}.\n\nNota: La alerta en tiempo real hacia los meseros se activará en la Fase 4.`
-  );
+  state.isRequestingMesero = true;
+  setSendingState(true);
+
+  try {
+    const res = await apiFetch('/api/cliente/solicitar-mesero', {
+      method: 'POST'
+    });
+
+    iniciarCooldownMesero();
+    agregarBurbujaBotTexto(
+      `🙋‍♂️ ${res.mensaje || 'Solicitud enviada. Un mesero se acercará a tu mesa en breve.'}`
+    );
+  } catch (error) {
+    if (error.message !== 'Sesión de mesa inválida o expirada.') {
+      agregarBurbujaBotTexto(
+        `No se pudo enviar la solicitud al mesero: ${error.message || 'Intenta nuevamente.'}`
+      );
+    }
+  } finally {
+    state.isRequestingMesero = false;
+    setSendingState(false);
+    actualizarBotonMesero();
+  }
 }
 
 // ==========================================

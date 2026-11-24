@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tu Mesa Bot - Cocina y Meseros</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Cliente Socket.IO servido por el backend -->
+  <script src="/socket.io/socket.io.js" defer></script>
+  <!-- Script principal del tablero en tiempo real -->
+  <script src="/js/cocina.js" defer></script>
+</head>
+<body class="bg-slate-100 text-slate-800 antialiased min-h-screen flex flex-col font-sans">
+
+  <!-- Contenedor flotante de notificaciones / toasts -->
+  <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full px-4 pointer-events-none" aria-live="polite"></div>
+
+  <!-- ======================================================== -->
+  <!-- VISTA DE INICIO DE SESIÓN CON PIN (#login-view)          -->
+  <!-- ======================================================== -->
+  <div id="login-view" class="flex-1 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 sm:p-8 border border-slate-200">
+      <div class="text-center mb-6">
+        <div class="inline-flex items-center justify-center w-14 h-14 rounded-full bg-amber-100 text-amber-600 mb-3 text-2xl font-bold" aria-hidden="true">
+          🍳
+        </div>
+        <h1 class="text-2xl font-bold text-slate-900">Tu Mesa Bot</h1>
+        <p class="text-sm text-slate-500 mt-1">Tablero de Cocina y Meseros</p>
+      </div>
+
+      <!-- Mensaje de error de autenticación -->
+      <div id="login-error" class="hidden mb-4 p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-sm font-medium"></div>
+
+      <form id="login-form" class="space-y-4" novalidate>
+        <div>
+          <label for="cocina-pin" class="block text-sm font-semibold text-slate-700 mb-1">
+            PIN de Cocina / Meseros
+          </label>
+          <input
+            type="password"
+            id="cocina-pin"
+            name="pin"
+            inputmode="numeric"
+            required
+            autocomplete="current-password"
+            placeholder="Ingresa el PIN de acceso"
+            class="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-slate-900 text-base tracking-widest outline-none transition"
+          >
+        </div>
+
+        <button
+          type="submit"
+          id="login-btn"
+          class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 px-4 rounded-lg shadow-md hover:shadow-lg transition duration-150 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+        >
+          <span>Ingresar al Tablero</span>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- VISTA PRINCIPAL DEL TABLERO (#cocina-view)               -->
+  <!-- ======================================================== -->
+  <div id="cocina-view" class="hidden flex-1 flex flex-col">
+
+    <!-- Encabezado fijo superior -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+      <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+
+        <!-- Título, estado en vivo y contadores -->
+        <div class="flex flex-wrap items-center justify-between lg:justify-start gap-2.5">
+          <div class="flex items-center gap-2.5">
+            <span class="text-2xl" aria-hidden="true">🍳</span>
+            <div>
+              <h1 class="text-base sm:text-lg font-bold text-slate-900 leading-tight">
+                Tu Mesa Bot · Cocina y Meseros
+              </h1>
+              <div class="flex flex-wrap items-center gap-2 mt-1">
+                <!-- Indicador visual de conexión en vivo -->
+                <span
+                  id="socket-status-badge"
+                  class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-100 text-rose-800 border border-rose-200"
+                >
+                  <span id="socket-status-dot" class="w-2 h-2 rounded-full bg-rose-500" aria-hidden="true"></span>
+                  <span id="socket-status-text">Desconectado</span>
+                </span>
+
+                <!-- Contadores rápidos -->
+                <span id="count-pedidos" class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                  0 pendientes
+                </span>
+                <span id="count-alertas" class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+                  0 alertas
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Botones de control operativo -->
+        <div class="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            id="sound-toggle-btn"
+            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs sm:text-sm font-semibold transition"
+            title="Activar o desactivar avisos sonoros"
+          >
+            <span id="sound-icon" aria-hidden="true">🔇</span>
+            <span id="sound-label">Sonido OFF</span>
+          </button>
+
+          <button
+            type="button"
+            id="refresh-btn"
+            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs sm:text-sm font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <span aria-hidden="true">🔄</span>
+            <span>Actualizar</span>
+          </button>
+
+          <button
+            type="button"
+            id="logout-btn"
+            class="inline-flex items-center px-3 py-1.5 rounded-lg border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs sm:text-sm font-semibold transition"
+          >
+            <span>Cerrar sesión</span>
+          </button>
+        </div>
+
+      </div>
+    </header>
+
+    <!-- Tablero principal responsivo (móvil: alertas arriba / desktop: 2 columnas) -->
+    <main class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-6 flex-1 w-full">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+        <!-- ========================================== -->
+        <!-- ÁREA 2: ALERTAS PARA MESEROS               -->
+        <!-- ========================================== -->
+        <section aria-labelledby="heading-alertas" class="order-1 lg:order-2 lg:col-span-4 space-y-4">
+          <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4 flex items-center justify-between">
+            <div>
+              <h2 id="heading-alertas" class="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+                <span aria-hidden="true">🔔</span>
+                <span>Alertas para Meseros</span>
+              </h2>
+              <p class="text-xs text-slate-500">Más recientes primero</p>
+            </div>
+            <span id="section-count-alertas" class="inline-flex items-center justify-center min-w-[28px] h-7 px-2 rounded-full text-xs font-bold bg-amber-100 text-amber-800">
+              0
+            </span>
+          </div>
+
+          <!-- Estado vacío de alertas -->
+          <div id="alertas-empty" class="bg-white rounded-xl border border-dashed border-slate-300 p-8 text-center text-slate-500">
+            <span class="text-3xl block mb-2" aria-hidden="true">✨</span>
+            <p class="text-sm font-semibold text-slate-700">Sin alertas pendientes</p>
+            <p class="text-xs text-slate-400 mt-1">Las solicitudes de mesas y pedidos listos aparecerán aquí al instante.</p>
+          </div>
+
+          <!-- Lista dinámica de alertas -->
+          <div id="alertas-list" class="space-y-3">
+            <!-- Tarjetas de alerta insertadas por cocina.js -->
+          </div>
+        </section>
+
+        <!-- ========================================== -->
+        <!-- ÁREA 1: COMANDAS PENDIENTES (COCINA)       -->
+        <!-- ========================================== -->
+        <section aria-labelledby="heading-pedidos" class="order-2 lg:order-1 lg:col-span-8 space-y-4">
+          <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4 flex items-center justify-between">
+            <div>
+              <h2 id="heading-pedidos" class="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+                <span aria-hidden="true">🍽️</span>
+                <span>Comandas Pendientes (Cocina)</span>
+              </h2>
+              <p class="text-xs text-slate-500">Orden de llegada (FIFO: las más antiguas primero)</p>
+            </div>
+            <span id="section-count-pedidos" class="inline-flex items-center justify-center min-w-[28px] h-7 px-2 rounded-full text-xs font-bold bg-indigo-100 text-indigo-800">
+              0
+            </span>
+          </div>
+
+          <!-- Estado vacío de comandas -->
+          <div id="pedidos-empty" class="bg-white rounded-xl border border-dashed border-slate-300 p-12 text-center text-slate-500">
+            <span class="text-4xl block mb-2" aria-hidden="true">👨‍🍳</span>
+            <p class="text-base font-semibold text-slate-700">No hay comandas pendientes</p>
+            <p class="text-xs text-slate-400 mt-1">Cuando los comensales confirmen un pedido, aparecerá aquí en tiempo real.</p>
+          </div>
+
+          <!-- Cuadrícula de comandas pendientes -->
+          <div id="pedidos-list" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- Tarjetas de pedido insertadas por cocina.js -->
+          </div>
+        </section>
+
+      </div>
+    </main>
+
+  </div>
+
+</body>
+</html>
