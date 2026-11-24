@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tu Mesa Bot - Sesión no válida</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-100 text-slate-800 antialiased min-h-screen flex items-center justify-center p-4 font-sans">
+  <main class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 sm:p-8 border border-slate-200 text-center">
+    <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-amber-100 text-amber-600 mb-4 text-3xl" aria-hidden="true">
+      📱
+    </div>
+
+    <h1 class="text-2xl font-bold text-slate-900">Tu sesión de mesa no es válida</h1>
+
+    <p class="mt-3 text-sm sm:text-base text-slate-600 leading-relaxed">
+      El enlace al que intentaste acceder venció, cambió o no corresponde a una mesa activa.
+    </p>
+
+    <div class="mt-6 rounded-xl bg-slate-50 border border-slate-200 p-4 text-left space-y-2">
+      <p class="text-sm font-semibold text-slate-800">¿Qué puedes hacer?</p>
+      <ul class="text-sm text-slate-600 space-y-1.5 list-disc list-inside">
+        <li>Abre la cámara de tu celular y <strong>escanea nuevamente el código QR</strong> ubicado en tu mesa física.</li>
+        <li>Si el inconveniente continúa, solicita ayuda a uno de nuestros meseros.</li>
+      </ul>
+    </div>
+
+    <p class="mt-6 text-xs text-slate-400">
+      Tu Mesa Bot · Acceso protegido por mesa
+    </p>
+  </main>
+</body>
+</html>

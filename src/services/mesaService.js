@@ -1,4 +1,5 @@
 // Servicio de gestión de mesas y asignación de tokens QR
+const crypto = require('crypto');
 const pool = require('../db/pool');
 const qrService = require('./qrService');
 
@@ -88,9 +89,75 @@ async function desactivarMesa(id) {
   return rows[0];
 }
 
+/**
+ * Compara dos tokens de forma segura contra ataques de temporización (timing attacks).
+ * Aplica SHA-256 previo a crypto.timingSafeEqual para garantizar buffers de igual longitud.
+ */
+function compararTokensSeguro(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string' || a.length === 0 || b.length === 0) {
+    return false;
+  }
+  const hashA = crypto.createHash('sha256').update(a).digest();
+  const hashB = crypto.createHash('sha256').update(b).digest();
+  return crypto.timingSafeEqual(hashA, hashB);
+}
+
+/**
+ * Valida el acceso inicial por QR verificando que la mesa exista, esté activa
+ * y el token coincida criptográficamente con el registrado en base de datos.
+ */
+async function validarAccesoMesa(numero, token) {
+  const { rows } = await pool.query(
+    'SELECT id, numero, token_secreto, activa FROM mesas WHERE numero = $1 AND activa = TRUE;',
+    [numero]
+  );
+
+  if (rows.length === 0) {
+    return null;
+  }
+
+  const mesa = rows[0];
+  if (!mesa.activa || !compararTokensSeguro(token, mesa.token_secreto)) {
+    return null;
+  }
+
+  return {
+    id: mesa.id,
+    numero: mesa.numero,
+    token_secreto: mesa.token_secreto
+  };
+}
+
+/**
+ * Revalida una sesión de mesa existente en base de datos para asegurar que la mesa
+ * siga activa y el token vigente (aislamiento de sesión).
+ */
+async function validarSesionMesa(mesaId, numero, token) {
+  const { rows } = await pool.query(
+    'SELECT id, numero, token_secreto FROM mesas WHERE id = $1 AND numero = $2 AND activa = TRUE;',
+    [mesaId, numero]
+  );
+
+  if (rows.length === 0) {
+    return null;
+  }
+
+  const mesa = rows[0];
+  if (!compararTokensSeguro(token, mesa.token_secreto)) {
+    return null;
+  }
+
+  return {
+    id: mesa.id,
+    numero: mesa.numero
+  };
+}
+
 module.exports = {
   listarMesas,
   obtenerMesaPorId,
   crearMesa,
-  desactivarMesa
+  desactivarMesa,
+  validarAccesoMesa,
+  validarSesionMesa
 };
