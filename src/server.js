@@ -8,6 +8,7 @@ const cookieParser = require('cookie-parser');
 
 const env = require('./config/env');
 const pool = require('./db/pool');
+const socketManager = require('./sockets/socketManager');
 
 const app = express();
 const server = http.createServer(app);
@@ -19,6 +20,9 @@ const io = new Server(server, {
     methods: ['GET', 'POST']
   }
 });
+
+// Configurar autenticación por cookie firmada y sala cocina_meseros
+socketManager.initSocket(io);
 
 // Configuración para proxies inversos (Render / Nginx)
 app.set('trust proxy', 1);
@@ -54,6 +58,10 @@ app.use('/api/admin', adminApiRoutes);
 // API de Cliente (protegida por sesión QR de mesa)
 const publicApiRoutes = require('./routes/publicApiRoutes');
 app.use('/api/cliente', publicApiRoutes);
+
+// API de Cocina y Meseros (protegida por PIN de cocina)
+const cocinaApiRoutes = require('./routes/cocinaApiRoutes');
+app.use('/api/cocina', cocinaApiRoutes);
 
 // Endpoint de verificación de salud del sistema y base de datos
 app.get('/api/health', async (req, res) => {

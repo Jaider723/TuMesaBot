@@ -1,5 +1,6 @@
 // Servicio de cálculo y creación transaccional de pedidos
 const pool = require('../db/pool');
+const alertaService = require('./alertaService');
 
 /**
  * Calcula costo_total, tiempo_estimado (MÁXIMO entre ítems) y total_items
@@ -144,7 +145,137 @@ async function crearPedido({ mesaId, mesaNumero, items }) {
   }
 }
 
+/**
+ * Lista todos los pedidos pendientes junto con sus ítems en orden FIFO sin consultas N+1.
+ */
+async function listarPedidosPendientes() {
+  const { rows: pedidosRows } = await pool.query(
+    `SELECT p.id, p.mesa_id, m.numero AS mesa_numero, p.estado, p.costo_total, p.tiempo_estimado, p.creado_en
+     FROM pedidos p
+     JOIN mesas m ON m.id = p.mesa_id
+     WHERE p.estado = 'pendiente'
+     ORDER BY p.creado_en ASC, p.id ASC;`
+  );
+
+  if (pedidosRows.length === 0) {
+    return [];
+  }
+
+  const pedidoIds = pedidosRows.map((p) => p.id);
+  const { rows: detalleRows } = await pool.query(
+    `SELECT dp.id, dp.pedido_id, dp.producto_id, pr.nombre, dp.cantidad, dp.precio_unitario, dp.notas
+     FROM detalle_pedido dp
+     JOIN productos pr ON pr.id = dp.producto_id
+     WHERE dp.pedido_id = ANY($1::int[])
+     ORDER BY dp.id ASC;`,
+    [pedidoIds]
+  );
+
+  const itemsPorPedido = new Map();
+  for (const row of detalleRows) {
+    if (!itemsPorPedido.has(row.pedido_id)) {
+      itemsPorPedido.set(row.pedido_id, []);
+    }
+    itemsPorPedido.get(row.pedido_id).push({
+      id: row.id,
+      producto_id: row.producto_id,
+      nombre: row.nombre,
+      cantidad: row.cantidad,
+      precio_unitario: Number(row.precio_unitario),
+      notas: row.notas
+    });
+  }
+
+  return pedidosRows.map((p) => ({
+    id: p.id,
+    mesa_id: p.mesa_id,
+    mesa_numero: p.mesa_numero,
+    estado: p.estado,
+    costo_total: Number(p.costo_total),
+    tiempo_estimado: p.tiempo_estimado,
+    creado_en: p.creado_en,
+    items: itemsPorPedido.get(p.id) || []
+  }));
+}
+
+/**
+ * Marca un pedido pendiente como 'listo' dentro de una transacción atómica
+ * y genera la alerta correspondiente para los meseros.
+ */
+async function marcarPedidoListo(pedidoId) {
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    // Bloqueamos la fila del pedido para evitar procesamiento duplicado concurrente
+    const { rows: pedidoRows } = await client.query(
+      `SELECT p.id, p.mesa_id, m.numero AS mesa_numero, p.estado
+       FROM pedidos p
+       JOIN mesas m ON m.id = p.mesa_id
+       WHERE p.id = $1
+       FOR UPDATE OF p;`,
+      [pedidoId]
+    );
+
+    if (pedidoRows.length === 0) {
+      const error = new Error('Pedido no encontrado');
+      error.status = 404;
+      throw error;
+    }
+
+    const pedidoActual = pedidoRows[0];
+    if (pedidoActual.estado !== 'pendiente') {
+      const error = new Error('El pedido ya fue procesado anteriormente');
+      error.status = 409;
+      throw error;
+    }
+
+    const { rows: actualizadoRows } = await client.query(
+      `UPDATE pedidos
+       SET estado = 'listo', completado_en = NOW()
+       WHERE id = $1
+       RETURNING id, mesa_id, estado, costo_total, tiempo_estimado, creado_en, completado_en;`,
+      [pedidoId]
+    );
+
+    const pedidoActualizado = actualizadoRows[0];
+
+    const alerta = await alertaService.crearAlerta(
+      {
+        mesaId: pedidoActual.mesa_id,
+        tipo: 'pedido_listo',
+        mensaje: `Pedido #${pedidoActualizado.id} de Mesa #${pedidoActual.mesa_numero} está LISTO para recoger`
+      },
+      client
+    );
+
+    await client.query('COMMIT');
+
+    return {
+      pedido: {
+        id: pedidoActualizado.id,
+        mesa_id: pedidoActualizado.mesa_id,
+        mesa_numero: pedidoActual.mesa_numero,
+        estado: pedidoActualizado.estado,
+        costo_total: Number(pedidoActualizado.costo_total),
+        tiempo_estimado: pedidoActualizado.tiempo_estimado,
+        creado_en: pedidoActualizado.creado_en,
+        completado_en: pedidoActualizado.completado_en
+      },
+      alerta
+    };
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 module.exports = {
   calcularResumenDesdeProductos,
-  crearPedido
+  crearPedido,
+  listarPedidosPendientes,
+  marcarPedidoListo
 };

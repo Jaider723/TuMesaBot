@@ -21,6 +21,11 @@ router.get('/admin', (req, res) => {
   res.sendFile(path.join(__dirname, '../../public/admin.html'));
 });
 
+// Entrega del panel de cocina y meseros
+router.get('/cocina', (req, res) => {
+  res.sendFile(path.join(__dirname, '../../public/cocina.html'));
+});
+
 // Acceso del comensal mediante código QR: /mesa/:numero?token=...
 router.get('/mesa/:numero', async (req, res, next) => {
   // Evitamos que el navegador cachee respuestas de validación de acceso QR

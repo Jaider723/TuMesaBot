@@ -6,6 +6,8 @@ const { requireMesaSession } = require('../middlewares/mesaAuth');
 const menuService = require('../services/menuService');
 const pedidoService = require('../services/pedidoService');
 const botService = require('../services/botService');
+const alertaService = require('../services/alertaService');
+const socketManager = require('../sockets/socketManager');
 
 const router = express.Router();
 
@@ -131,10 +133,34 @@ router.post('/pedidos', async (req, res, next) => {
       items: parsed.data.items
     });
 
+    // Notificar en tiempo real a cocina tras confirmar la transacción SQL
+    socketManager.emitNuevoPedido(pedido);
+
     return res.status(201).json({
       status: 'ok',
       mensaje: 'Pedido registrado exitosamente',
       pedido
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+// POST /api/cliente/solicitar-mesero: registra alerta de asistencia y notifica en tiempo real
+router.post('/solicitar-mesero', async (req, res, next) => {
+  try {
+    const alerta = await alertaService.crearAlerta({
+      mesaId: req.mesa.id,
+      tipo: 'asistencia_mesero',
+      mensaje: `Mesa #${req.mesa.numero} solicita asistencia`
+    });
+
+    socketManager.emitNuevaAlerta(alerta);
+
+    return res.status(201).json({
+      status: 'ok',
+      mensaje: 'Solicitud enviada. Un mesero se acercará a tu mesa en breve.',
+      alerta
     });
   } catch (error) {
     return next(error);
