@@ -51,6 +51,10 @@ app.use('/', viewsRoutes);
 const adminApiRoutes = require('./routes/adminApiRoutes');
 app.use('/api/admin', adminApiRoutes);
 
+// API de Cliente (protegida por sesión QR de mesa)
+const publicApiRoutes = require('./routes/publicApiRoutes');
+app.use('/api/cliente', publicApiRoutes);
+
 // Endpoint de verificación de salud del sistema y base de datos
 app.get('/api/health', async (req, res) => {
   try {
