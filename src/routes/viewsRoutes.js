@@ -4,7 +4,11 @@ const express = require('express');
 const { z } = require('zod');
 
 const mesaService = require('../services/mesaService');
-const { setMesaCookie, clearMesaCookie } = require('../middlewares/mesaAuth');
+const {
+  setMesaCookie,
+  clearMesaCookie,
+  verificarCookieMesa
+} = require('../middlewares/mesaAuth');
 
 const router = express.Router();
 
@@ -47,12 +51,31 @@ router.get('/mesa/:numero', async (req, res, next) => {
       return res.status(403).sendFile(path.join(__dirname, '../../public/error-sesion.html'));
     }
 
-    // Emitimos cookie firmada HttpOnly para aislar la sesión de esta mesa
+    // Emitimos cookie firmada HttpOnly para aislar la sesión y redirigimos a /chat sin exponer el token en la URL
     setMesaCookie(res, {
       mesaId: mesa.id,
       numero: mesa.numero,
-      token: mesa.token_secreto
+      token: mesa.token_secreto,
+      sesionVersion: mesa.sesion_version
     });
+
+    return res.redirect(302, '/chat');
+  } catch (error) {
+    return next(error);
+  }
+});
+
+// Vista principal del chat para el comensal (protegida por cookie de sesión verificada en BD)
+router.get('/chat', async (req, res, next) => {
+  res.set('Cache-Control', 'no-store');
+
+  try {
+    const mesa = await verificarCookieMesa(req);
+
+    if (!mesa) {
+      clearMesaCookie(res);
+      return res.status(403).sendFile(path.join(__dirname, '../../public/error-sesion.html'));
+    }
 
     return res.status(200).sendFile(path.join(__dirname, '../../public/cliente.html'));
   } catch (error) {

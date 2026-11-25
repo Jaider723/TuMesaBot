@@ -3,9 +3,12 @@ CREATE TABLE IF NOT EXISTS mesas (
     id SERIAL PRIMARY KEY,
     numero INTEGER UNIQUE NOT NULL,
     token_secreto VARCHAR(64) UNIQUE NOT NULL,
+    sesion_version INTEGER NOT NULL DEFAULT 1,
     activa BOOLEAN DEFAULT TRUE,
     creada_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+ALTER TABLE mesas ADD COLUMN IF NOT EXISTS sesion_version INTEGER NOT NULL DEFAULT 1;
 
 -- 2. Catálogo del menú (platos y bebidas)
 CREATE TABLE IF NOT EXISTS productos (

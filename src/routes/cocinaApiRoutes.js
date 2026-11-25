@@ -11,6 +11,7 @@ const {
 
 const pedidoService = require('../services/pedidoService');
 const alertaService = require('../services/alertaService');
+const mesaService = require('../services/mesaService');
 const socketManager = require('../sockets/socketManager');
 
 const router = express.Router();
@@ -89,17 +90,28 @@ router.get('/sesion', requireCocinaAuth, (req, res) => {
 // OPERACIÓN EN TIEMPO REAL DE COCINA Y MESEROS
 // ==========================================
 
-// GET /api/cocina/estado: carga inicial de pedidos pendientes y alertas activas
+// GET /api/cocina/estado: carga inicial de pedidos pendientes, alertas activas y estado de sesiones por mesa
 router.get('/estado', requireCocinaAuth, async (req, res, next) => {
   try {
-    const [pedidos, alertas] = await Promise.all([
+    const [pedidos, alertas, mesasActivas] = await Promise.all([
       pedidoService.listarPedidosPendientes(),
-      alertaService.listarAlertasPendientes()
+      alertaService.listarAlertasPendientes(),
+      mesaService.listarMesas({ soloActivas: true })
     ]);
+
+    // Exponer únicamente id, numero y sesion_version de mesas activas (nunca token_secreto)
+    const mesas = mesasActivas
+      .filter((m) => m.activa === true)
+      .map((m) => ({
+        id: m.id,
+        numero: m.numero,
+        sesion_version: m.sesion_version
+      }));
 
     return res.status(200).json({
       pedidos,
-      alertas
+      alertas,
+      mesas
     });
   } catch (error) {
     return next(error);
@@ -161,6 +173,29 @@ router.patch('/alertas/:id/atender', requireCocinaAuth, async (req, res, next) =
       status: 'ok',
       mensaje: 'Alerta marcada como atendida',
       alerta
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+// PATCH /api/cocina/mesas/:id/liberar: invalida sesiones anteriores de la mesa al cambiar de turno
+router.patch('/mesas/:id/liberar', requireCocinaAuth, async (req, res, next) => {
+  try {
+    const idParsed = idParamSchema.safeParse(req.params.id);
+    if (!idParsed.success) {
+      return res.status(400).json({
+        status: 'error',
+        error: formatearErrorZod(idParsed.error)
+      });
+    }
+
+    const mesa = await mesaService.liberarMesa(idParsed.data);
+
+    return res.status(200).json({
+      status: 'ok',
+      mensaje: `Sesión de la Mesa #${mesa.numero} liberada. Los dispositivos anteriores deberán escanear el QR nuevamente.`,
+      mesa
     });
   } catch (error) {
     return next(error);

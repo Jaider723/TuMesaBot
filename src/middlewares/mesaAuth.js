@@ -12,17 +12,17 @@ const COOKIE_BASE_OPTIONS = {
   secure: env.NODE_ENV === 'production'
 };
 
-// Opciones con expiración de 12 horas para la sesión del comensal en mesa
+// Opciones con expiración de 2 horas para la sesión del comensal en mesa
 const COOKIE_SESSION_OPTIONS = {
   ...COOKIE_BASE_OPTIONS,
-  maxAge: 12 * 60 * 60 * 1000
+  maxAge: 2 * 60 * 60 * 1000
 };
 
 /**
- * Emite la cookie firmada HttpOnly con los datos de sesión de la mesa.
+ * Emite la cookie firmada HttpOnly con los datos de sesión de la mesa y su versión de turno.
  */
-function setMesaCookie(res, { mesaId, numero, token }) {
-  const payload = JSON.stringify({ mesaId, numero, token });
+function setMesaCookie(res, { mesaId, numero, token, sesionVersion }) {
+  const payload = JSON.stringify({ mesaId, numero, token, sesionVersion });
   res.cookie(MESA_COOKIE_NAME, payload, COOKIE_SESSION_OPTIONS);
 }
 
@@ -46,21 +46,21 @@ function rechazarSesionMesa(res) {
 }
 
 /**
- * Middleware que protege las rutas de cliente verificando exclusivamente
- * la cookie firmada contra la base de datos (nunca datos del req.body).
+ * Lee, valida estructuralmente y verifica contra PostgreSQL la cookie de sesión de mesa.
+ * Retorna { id, numero, sesion_version } si es válida o null si expiró/fue invalidada.
  */
-async function requireMesaSession(req, res, next) {
+async function verificarCookieMesa(req) {
   const rawCookie = req.signedCookies && req.signedCookies[MESA_COOKIE_NAME];
 
   if (typeof rawCookie !== 'string' || rawCookie.length === 0) {
-    return rechazarSesionMesa(res);
+    return null;
   }
 
   let datosSesion;
   try {
     datosSesion = JSON.parse(rawCookie);
   } catch (parseError) {
-    return rechazarSesionMesa(res);
+    return null;
   }
 
   // Validación estricta de estructura y tipos en la cookie parseada
@@ -71,19 +71,30 @@ async function requireMesaSession(req, res, next) {
     datosSesion.mesaId <= 0 ||
     !Number.isInteger(datosSesion.numero) ||
     datosSesion.numero <= 0 ||
+    !Number.isInteger(datosSesion.sesionVersion) ||
+    datosSesion.sesionVersion <= 0 ||
     typeof datosSesion.token !== 'string' ||
     datosSesion.token.trim().length === 0
   ) {
-    return rechazarSesionMesa(res);
+    return null;
   }
 
+  // Revalidación obligatoria en BD para detectar mesas desactivadas, tokens rotados o turnos liberados
+  return await mesaService.validarSesionMesa(
+    datosSesion.mesaId,
+    datosSesion.numero,
+    datosSesion.token,
+    datosSesion.sesionVersion
+  );
+}
+
+/**
+ * Middleware que protege las rutas de cliente verificando exclusivamente
+ * la cookie firmada contra la base de datos (nunca datos del req.body).
+ */
+async function requireMesaSession(req, res, next) {
   try {
-    // Revalidación obligatoria en BD para detectar mesas desactivadas o tokens rotados
-    const mesa = await mesaService.validarSesionMesa(
-      datosSesion.mesaId,
-      datosSesion.numero,
-      datosSesion.token
-    );
+    const mesa = await verificarCookieMesa(req);
 
     if (!mesa) {
       return rechazarSesionMesa(res);
@@ -104,5 +115,6 @@ module.exports = {
   MESA_COOKIE_NAME,
   setMesaCookie,
   clearMesaCookie,
+  verificarCookieMesa,
   requireMesaSession
 };
